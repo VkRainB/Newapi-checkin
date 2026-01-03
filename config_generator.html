@@ -427,19 +427,77 @@
                 ? document.getElementById('json-output').textContent
                 : document.getElementById('simple-output').textContent;
 
-            navigator.clipboard.writeText(text).then(() => {
-                const btn = event.target;
-                const originalText = btn.textContent;
-                btn.textContent = '已复制！';
-                btn.style.background = '#48bb78';
+            const btn = event.target;
+            const originalText = btn.textContent;
+
+            // 尝试现代 API
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    btn.textContent = '✅ 已复制！';
+                    btn.style.background = '#48bb78';
+
+                    setTimeout(() => {
+                        btn.textContent = originalText;
+                        btn.style.background = '';
+                    }, 2000);
+                }).catch(err => {
+                    // 失败时使用备用方案
+                    fallbackCopy(text, btn, originalText);
+                });
+            } else {
+                // 浏览器不支持现代 API,使用备用方案
+                fallbackCopy(text, btn, originalText);
+            }
+        }
+
+        // 备用复制方案
+        function fallbackCopy(text, btn, originalText) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.top = '-9999px';
+            textarea.style.left = '-9999px';
+            document.body.appendChild(textarea);
+
+            try {
+                textarea.select();
+                textarea.setSelectionRange(0, 99999); // 移动端兼容
+
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textarea);
+
+                if (successful) {
+                    btn.textContent = '✅ 已复制！';
+                    btn.style.background = '#48bb78';
+
+                    setTimeout(() => {
+                        btn.textContent = originalText;
+                        btn.style.background = '';
+                    }, 2000);
+                } else {
+                    throw new Error('execCommand failed');
+                }
+            } catch (err) {
+                document.body.removeChild(textarea);
+                // 自动选中文本,提示用户手动复制
+                const outputElement = document.getElementById(
+                    btn.closest('.tab-content').querySelector('pre').id
+                );
+                const selection = window.getSelection();
+                const range = document.createRange();
+                range.selectNodeContents(outputElement);
+                selection.removeAllRanges();
+                selection.addRange(range);
+
+                btn.textContent = '⚠️ 请手动复制';
+                btn.style.background = '#f59e0b';
+                alert('自动复制失败，已为您选中文本，请按 Ctrl+C (Mac: Cmd+C) 手动复制');
 
                 setTimeout(() => {
                     btn.textContent = originalText;
                     btn.style.background = '';
-                }, 2000);
-            }).catch(err => {
-                alert('复制失败，请手动复制');
-            });
+                }, 3000);
+            }
         }
 
         // ========== 本地存储功能 ==========
