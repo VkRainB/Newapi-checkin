@@ -13,6 +13,12 @@ import requests
 from datetime import datetime
 from typing import Optional
 
+# 钉钉通知
+try:
+    from dingtalk_notifier import send_checkin_notification
+except ImportError:
+    send_checkin_notification = None
+
 
 class NewAPICheckin:
     """NewAPI 签到类"""
